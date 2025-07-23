@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "syft-playground"
+version = "0.1.0"
+description = "Lean PySyft sandbox (CPU‑only)"
+authors = ["KFilippopolitis <kfilippopolitis@athenarc.gr>"]
+readme = "README.md"
+
+[[tool.poetry.source]]
+name = "pytorch-cpu"                 # any name you like
+url  = "https://download.pytorch.org/whl/cpu"   # CPU wheels live here :contentReference[oaicite:0]{index=0}
+priority = "explicit"                # Poetry will look here only when asked
+
+[tool.poetry.dependencies]
+python = "~3.10"
+syft  = "0.9.5"        # no extras → no Hugging Face, no CUDA blobs :contentReference[oaicite:1]{index=1}
+torch = {version = "2.2.2+cpu", source = "pytorch-cpu"}  # CPU‑only wheel
+# add just what the Pearson demo needs
+numpy = ">=1.24,<2.3"
+scipy = ">=1.10,<2.0"
+
+[tool.poetry.group.dev.dependencies]
+invoke = "^2.2.0"
+
