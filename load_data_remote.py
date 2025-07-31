@@ -7,14 +7,13 @@ import numpy as np
 import pandas as pd
 import syft as sy
 
-# ----------------------------------------------------------------------
-# EDIT your endpoints
+# ------------------------------------------------------------------
 SITES: List[Dict[str, str | int]] = [
     {"host": "gaia2-vm-1.imsi.athenarc.gr", "port": 8090},
     {"host": "gaia2-vm-2.imsi.athenarc.gr", "port": 8090},
     {"host": "gaia2-vm-3.imsi.athenarc.gr", "port": 8090},
 ]
-# ----------------------------------------------------------------------
+# ------------------------------------------------------------------
 
 EMAIL = "info@openmined.org"
 PASSWORD = "changethis"
@@ -32,8 +31,8 @@ def upload(client: sy.Client, rows: int, idx: int) -> None:
 def main():
     for idx, site in enumerate(SITES):
         host, port = site["host"], site["port"]
-        url = f"http://{host}:{port}"           # ← build URL here
-        client = sy.login(url, email=EMAIL, password=PASSWORD)
+        url = f"http://{host}:{port}"
+        client = sy.login(email=EMAIL, password=PASSWORD, url=url)
         rows = 200 + idx * 100
         upload(client, rows, idx)
 
