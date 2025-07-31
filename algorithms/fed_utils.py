@@ -1,15 +1,6 @@
-#!/usr/bin/env python3
-"""
-fed_utils.py
-------------
-Shared helpers + single source of truth for federation settings.
-Edit SITES / EMAIL / PASSWORD here once.
-"""
-
-from __future__ import annotations
+# --- keep previous imports / config here -------------------------------
 from typing import List, Dict, Any
 import json, os
-import numpy as np
 import syft as sy
 
 # ------------------------------------------------------------------ config
@@ -27,7 +18,6 @@ EMAIL, PASSWORD = "info@openmined.org", "changethis"
 
 # ------------------------------------------------------------------ helpers
 def to_native(obj: Any):
-    """ActionObject → Python."""
     if isinstance(obj, tuple):
         return obj
     if hasattr(obj, "resolve"):
@@ -36,23 +26,30 @@ def to_native(obj: Any):
         return obj.get()
     raise TypeError(f"Cannot convert {type(obj)}")
 
+
 def get_assets(label_col: str | None = None):
     """
-    Yield (client, asset) for every site.
-    If label_col is given, also return the feature dimension (d).
+    Return (assets, feature_dim)
+    • assets      – list of Syft Asset objects (one per site)
+    • feature_dim – d  (+1 for bias)  if label_col is given, else None
     """
+    assets: List[Any] = []
     dim = None
+
     for site in SITES:
         url = f"http://{site['host']}:{site['port']}"
-        c   = sy.login(email=EMAIL, password=PASSWORD, url=url)
-        c.refresh()
+        client = sy.login(email=EMAIL, password=PASSWORD, url=url)
+        client.refresh()
+
         try:
-            ds = next(iter(c.datasets))
+            ds = next(iter(client.datasets))
         except StopIteration:
             raise RuntimeError(f"No dataset on {url}")
+
         asset = ds.assets[0]
+        assets.append(asset)
+
         if label_col and dim is None:
             dim = asset.data.columns.drop(label_col).size + 1  # +bias
-        yield c, asset
-    if label_col:
-        return dim
+
+    return (assets, dim) if label_col else (assets, None)

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import numpy as np, argparse
+import syft as sy
+import numpy as np
 from fed_utils import SITES, get_assets, to_native
 
 def _stats_fn(asset):
