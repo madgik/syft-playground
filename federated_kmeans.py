@@ -16,7 +16,7 @@ import numpy as np
 import syft as sy
 
 SITES: List[Dict[str, str | int]] = [
-    {"host": "gaia2-vm-2.imsi.athenarc.gr", "port": 8080},
+    {"host": "gaia2-vm-2.imsi.athenarc.gr", "port": 8090},
     {"host": "gaia2-vm-3.imsi.athenarc.gr", "port": 8090},
 ]
 EMAIL, PASSWORD = "info@openmined.org", "changethis"
