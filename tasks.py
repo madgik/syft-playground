@@ -152,5 +152,14 @@ def load_data(c):
 @invoke.task()
 def run(c):
     """Call pearson.compute_global_pearson and print the result."""
-    total_rows, r = compute_global_pearson(NUM, BASE)
+    # local contiguous ports
+    total_rows, r = compute_global_pearson(num_clients=3, base_port=8080)
+
+    # remote VMs
+    ENDPOINTS = [
+        {"host": "gaia2-vm-1.imsi.athenarc.gr", "port": 8090},
+        {"host": "gaia2-vm-2.imsi.athenarc.gr", "port": 8090},
+        {"host": "gaia2-vm-3.imsi.athenarc.gr", "port": 8090},
+    ]
+    total_rows, r = compute_global_pearson(sites=ENDPOINTS)
     print(f"\nGlobal Pearson r over {total_rows} rows, {NUM} sites: {r:.6f}")
