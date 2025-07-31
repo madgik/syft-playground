@@ -2,35 +2,38 @@
 """
 pearson.py
 ----------
-Privacy-preserving (federated) Pearson correlation for PySyft 0.9.x.
+Compute a privacy-preserving (federated) Pearson correlation with PySyft 0.9.
 
-How to call
------------
-1) Legacy (all-local) style
-       total_rows, r = compute_global_pearson(num_clients=3, base_port=8080)
+Two modes
+---------
+1. Remote mode (default) – uses the hard-coded SITES list below.
+2. Local test        – `python pearson.py --local N BASE_PORT`
+                       connects to localhost:BASE_PORT..BASE_PORT+N-1.
 
-2) Explicit endpoint list (remote machines)
-       SITES = [
-           {"host": "localhost",                       "port": 8080},
-           {"host": "gaia2-vm-2.imsi.athenarc.gr",     "port": 8080},
-           {"host": "gaia2-vm-3.imsi.athenarc.gr",     "port": 8090},
-       ]
-       total_rows, r = compute_global_pearson(sites=SITES)
+Edit the SITES list to match your real datasite endpoints.
 """
 
 from __future__ import annotations
-from typing import Tuple, List, Dict, Any
+from typing import List, Dict, Tuple, Any
+import argparse
 
 import numpy as np
 import syft as sy
 
 
 # ----------------------------------------------------------------------
-# helper: per-site stats function factory
+# 1. Hard-coded endpoints  (edit as needed)
+SITES: List[Dict[str, str | int]] = [
+    {"host": "gaia2-vm-2.imsi.athenarc.gr", "port": 8080},
+    {"host": "gaia2-vm-3.imsi.athenarc.gr", "port": 8090},
+]
+EMAIL = "info@openmined.org"
+PASSWORD = "changethis"
+
+
+# ----------------------------------------------------------------------
+# helper: per-site stats function
 def _stats_fn(asset):
-    """Return a single-use Syft function that emits
-       (n, Σx, Σy, Σx², Σy², Σxy) for its bound DataFrame.
-    """
     @sy.syft_function_single_use(df=asset)
     def local_stats(df):
         n   = len(df)
@@ -43,68 +46,72 @@ def _stats_fn(asset):
     return local_stats
 
 
-def _to_native(obj: Any):
-    """Convert ActionObject → Python data."""
+def _to_tuple(obj: Any):
     if isinstance(obj, tuple):
         return obj
     if hasattr(obj, "resolve"):
         return obj.resolve()
     if hasattr(obj, "get"):
         return obj.get()
-    raise TypeError(f"Cannot convert {type(obj)} to Python")
+    raise TypeError(f"Unexpected return type: {type(obj)}")
 
 
 # ----------------------------------------------------------------------
-# public API
-def compute_global_pearson(
-    num_clients: int | None = None,
-    base_port: int | None = None,
-    sites: List[Dict[str, str | int]] | None = None,
-) -> Tuple[int, float]:
+def compute_global_pearson(sites: List[Dict[str, str | int]]) -> Tuple[int, float]:
     """
-    Return (total_row_count, Pearson r) computed across all datasites.
-
-    Choose ONE of the call styles:
-        • num_clients + base_port  –> local consecutive ports
-        • sites = [{"host": ..., "port": ...}, ...]  –> explicit list
+    Return (total_rows, Pearson r) across all `sites`.
+    Each site dict needs {"host": ..., "port": ...}.
     """
-    # -------------------------------------------------- build endpoint list
-    if sites is not None:
-        ENDPOINTS = sites
-    elif num_clients is not None and base_port is not None:
-        ENDPOINTS = [
-            {"host": "localhost", "port": base_port + i}
-            for i in range(num_clients)
-        ]
-    else:
-        raise ValueError("Provide either (num_clients, base_port) OR sites list")
-
-    # -------------------------------------------------- main loop
     results: List[Tuple[int, float, float, float, float, float]] = []
 
-    for idx, ep in enumerate(ENDPOINTS, 1):
-        url = f"http://{ep['host']}:{ep['port']}"
-        client = sy.login(email="info@openmined.org",
-                          password="changethis",
-                          url=url)
+    for site in sites:
+        url = f"http://{site['host']}:{site['port']}"
+        client = sy.login(email=EMAIL, password=PASSWORD, url=url)
         client.refresh()
 
         try:
             ds = next(iter(client.datasets))
         except StopIteration:
-            raise RuntimeError(f"No dataset on site {url}; upload data first.")
+            raise RuntimeError(f"No dataset on {url}")
 
         asset = ds.assets[0]
         res   = _stats_fn(asset)(df=asset, blocking=True)
-        results.append(_to_native(res))
+        results.append(_to_tuple(res))
 
-    # -------------------------------------------------- aggregate client-side
     totals = np.sum(np.array(results, dtype=float), axis=0)
     N, sx, sy_, sxx, syy, sxy = totals
 
-    numerator = sxy - (sx * sy_) / N
-    var_x     = sxx - (sx ** 2) / N
-    var_y     = syy - (sy_ ** 2) / N
-    r         = numerator / ((var_x ** 0.5) * (var_y ** 0.5))
+    num  = sxy - (sx * sy_) / N
+    varx = sxx - (sx ** 2) / N
+    vary = syy - (sy_ ** 2) / N
+    r    = num / ((varx ** 0.5) * (vary ** 0.5))
 
     return int(N), float(r)
+
+
+# ----------------------------------------------------------------------
+# CLI entry-point
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--local",
+        metavar=("NUM_CLIENTS", "BASE_PORT"),
+        nargs=2,
+        type=int,
+        help="Test against NUM_CLIENTS servers on localhost starting at BASE_PORT",
+    )
+    args = parser.parse_args()
+
+    if args.local:
+        num_clients, base_port = args.local
+        sites = [{"host": "localhost", "port": base_port + i} for i in range(num_clients)]
+    else:
+        sites = SITES
+
+    total, r = compute_global_pearson(sites)
+    print(f"Total rows: {total}")
+    print(f"Pearson r : {r:.6f}")
+
+
+if __name__ == "__main__":
+    main()

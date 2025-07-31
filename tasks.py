@@ -156,7 +156,7 @@ def run(c):
 
     # remote VMs
     ENDPOINTS = [
-        {"host": "gaia2-vm-1.imsi.athenarc.gr", "port": 8090},
+        {"host": "localhost", "port": 8090},
         {"host": "gaia2-vm-2.imsi.athenarc.gr", "port": 8090},
         {"host": "gaia2-vm-3.imsi.athenarc.gr", "port": 8090},
     ]
