@@ -25,7 +25,6 @@ from pearson import compute_global_pearson
 # ------------------------------------------------------------------
 # Configuration -----------------------------------------------------
 CFG = json.loads(Path("config.json").read_text())
-NUM, BASE = CFG["num_clients"], CFG["base_port"]
 
 LOG_DIR  = Path("syft_logs")
 PID_FILE = Path(".syft_pids")
